@@ -7,7 +7,7 @@ services:
     environment:
       POSTGRES_USER: medusa
       POSTGRES_PASSWORD: medusa
-      POSTGRES_DB: medusa_db
+      POSTGRES_DB: medusa-ecommerce
     ports:
       - "5432:5432"
     volumes:
@@ -23,17 +23,31 @@ services:
     build: ./backend
     container_name: medusa_backend
     environment:
-      DATABASE_URL: postgres://medusa:medusa@postgres:5432/medusa_db
+      DATABASE_URL: postgres://medusa:medusa@postgres:5432/medusa-ecommerce?sslmode=disable
       REDIS_URL: redis://redis:6379
       NODE_ENV: development
       PORT: 9000
+      STORE_CORS: "http://localhost:8000"
+      ADMIN_CORS: "http://localhost:7001,http://localhost:7000"
+      AUTH_CORS: "http://localhost:7001,http://localhost:7000"
+      JWT_SECRET: "supersecret"
+      COOKIE_SECRET: "supersecret"
     ports:
       - "9000:9000"
     volumes:
       - ./backend:/app
+      - /app/node_modules
     depends_on:
       - postgres
       - redis
+
+  adminer:
+    image: adminer
+    container_name: medusa_adminer
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
 
 volumes:
   postgres_data:

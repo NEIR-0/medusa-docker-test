@@ -1,19 +1,18 @@
 FROM node:18
 
-# set working dir
 WORKDIR /app
 
-# copy package.json dan lockfile dulu (biar cache efisien)
+# Copy package files
 COPY package*.json ./
 
-# install dependencies
+# Install dependencies
 RUN npm install
 
-# copy seluruh source code
+# Copy source code
 COPY . .
 
-# expose port 9000
+# Expose port
 EXPOSE 9000
 
-# start Medusa
-CMD ["npm", "run", "start"]
+# Default command
+CMD ["npm", "run", "dev"]
