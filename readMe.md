@@ -270,3 +270,8 @@ docker-compose logs postgres
 # View all logs
 docker-compose logs
 ```
+
+## TUTORIAL CREATE PRODCUT
+1. create inventory
+2. create prodcut
+3. add shipping conifg di prodcut detail
