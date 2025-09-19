@@ -23,14 +23,60 @@ export async function POST(
   req: MedusaRequest, 
   res: MedusaResponse
 ) {
-  const { title } = req.body
-  
-  const { result: post } = await createPostWorkflow(req.scope)
-    .run({
-      input: { title },
-    })
+  try {
+    const authHeader = req.headers.authorization
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({
+        message: "Authorization required. Please provide Bearer token."
+      })
+    }
 
-  res.json({
-    post,
-  })
+    const token = authHeader.substring(7)
+    let userInfo = null
+    try {
+      const base64Payload = token.split('.')[1]
+      const payload = JSON.parse(Buffer.from(base64Payload, 'base64').toString())
+      const currentTime = Math.floor(Date.now() / 1000)
+      if (payload.exp && payload.exp < currentTime) {
+        return res.status(401).json({
+          message: "Token expired. Please login again."
+        })
+      }
+
+      userInfo = {
+        id: payload.actor_id,
+        type: payload.actor_type,
+        authIdentityId: payload.auth_identity_id
+      }
+
+      console.log("=== User authenticated ===")
+      console.log(userInfo)
+    } catch (e) {
+      return res.status(401).json({
+        message: "Invalid token format."
+      })
+    }
+
+    const { title } = req.body
+    if (!title) {
+      return res.status(400).json({
+        message: "Title is required"
+      })
+    }
+    
+    const { result: post } = await createPostWorkflow(req.scope)
+      .run({
+        input: { title },
+      })
+
+    res.json({
+      post,
+      author: userInfo
+    })
+  } catch (error) {
+    res.status(400).json({
+      message: "Failed to create post",
+      error: error.message
+    })
+  }
 }
