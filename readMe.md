@@ -64,5 +64,35 @@ npx medusa db:generate blog
 npx medusa db:migrate
 - migrate ke db. done deh
 
+npm run seed
+- seeding
+
+npx medusa user -e admin@example.com -p supersecret
+- cretae user
+- https://docs.medusajs.com/resources/medusa-cli/commands/user
+
 5. nah next untuk test kita ikutin docs, create workflow dan api done deh
 - api itu di luar admin dan store jadi gak perlu pakai token, whihc mean ini diluar auth. bagus untuk endpoint katalog
+
+
+## continuesly add column di table yang sudah di migrate
+example gw itu src/modules//blog
+1. di src/modules//blog/models/posts.ts. kita add column:
+  - subtitle: model.text().nullable(), 
+2. update src/modules//blog/migrations/.snapshot-blog.json
+```js
+  "subtitle": {
+    "name": "subtitle",
+    "type": "text",
+    "unsigned": false,
+    "autoincrement": false,
+    "primary": false,
+    "nullable": true,
+    "mappedType": "text"
+  },
+```
+3. add migratiosn manual, simplenya copy paste yang sebelumny dan add +1 di belakang example:
+sebelumnya: Migration20250922115651.ts
+yang terbaru: Migration20250922115652.ts
+
+4. npx medusa db:migrate
