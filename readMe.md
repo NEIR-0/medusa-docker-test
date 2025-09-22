@@ -96,3 +96,74 @@ sebelumnya: Migration20250922115651.ts
 yang terbaru: Migration20250922115652.ts
 
 4. npx medusa db:migrate
+
+## relasi dan inputnya:
+relasi default "user" table medusa
+1. add model, simple. jadi relasinya pas migrations
+```js
+const Post = model.define("post", {
+  id: model.id().primaryKey(),
+  title: model.text(),
+  description: model.text().nullable(),
+  subtitle: model.text().nullable(),
+  user_id: model.text().nullable(), // medusa table
+})
+```
+2. migrations, bikin migrations menggunakan query:
+```js
+// src/modules/blog/migrations/Migration20250922115653.ts
+import { Migration } from '@mikro-orm/migrations';
+
+export class Migration20250922115653 extends Migration {
+override async up(): Promise<void> {
+    this.addSql(`
+      alter table "post"
+      add column "user_id" text null;
+    `);
+
+    this.addSql(`
+      alter table "post"
+      add constraint "post_user_id_foreign"
+      foreign key ("user_id") references "user" ("id") // disini
+      on delete set null
+      on update cascade;
+    `);
+  }
+
+  override async down(): Promise<void> {
+    this.addSql(`alter table "post" drop constraint "post_user_id_foreign";`);
+    this.addSql(`alter table "post" drop column "user_id";`);
+  }
+}
+```
+
+nah jadi deh!!! cuman kita udah add inputan, cuman kita harus req.body nya flownya:
+1. src/api/blog/posts/**routes.ts
+example kayak gini:
+```js
+const input = {
+  ...req.body,
+  user_id: userInfo?.id,
+} as CreatePostWorkflowInput // input type
+```
+
+2. src/workflows/post-workflows.ts
+```js
+export type CreatePostWorkflowInput = {
+  title: string,
+  description?: string
+  subtitle?: string
+  user_id?: string
+}
+
+async (input: CreatePostWorkflowInput, { container }) => { // disini
+  ...
+}
+```
+
+3. src/modules/blog/services.ts
+```js
+async createPost(data: { title: string; description: string; subtitle: string; user_id: string }) { // disini nya 
+  return await this.createPosts(data) // ✅
+}
+```

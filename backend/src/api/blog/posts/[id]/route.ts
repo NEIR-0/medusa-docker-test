@@ -4,7 +4,7 @@ import type {
 } from "@medusajs/framework/http"
 import { BLOG_MODULE } from "../../../../modules/blog"
 import BlogModuleService from "../../../../modules/blog/service"
-import { updatePostWorkflow, deletePostWorkflow } from "../../../../workflows/post-workflows"
+import { updatePostWorkflow, deletePostWorkflow, UpdatePostWorkflowInput } from "../../../../workflows/post-workflows"
 
 export async function GET(
   req: MedusaRequest, 
@@ -29,12 +29,15 @@ export async function PUT(
   res: MedusaResponse
 ) {
   const { id } = req.params
-  const { title } = req.body
+  const input = {
+    ...req.body,
+    id,
+  } as UpdatePostWorkflowInput
   
   try {
     const { result: post } = await updatePostWorkflow(req.scope)
       .run({
-        input: { id, title },
+        input
       })
 
     res.json({ post })

@@ -9,25 +9,30 @@ import { BLOG_MODULE } from "../modules/blog"
 import BlogModuleService from "../modules/blog/service"
 
 // Types
-type CreatePostWorkflowInput = {
-  title: string
+export type CreatePostWorkflowInput = {
+  title: string,
+  description?: string
+  subtitle?: string
+  user_id?: string
 }
 
-type UpdatePostWorkflowInput = {
+export type UpdatePostWorkflowInput = {
   id: string
-  title?: string
+  title?: string,
+  description?: string
+  subtitle?: string
 }
 
 type DeletePostWorkflowInput = {
-  id: string
+  id: string,
 }
 
 // CREATE WORKFLOW
 const createPostStep = createStep(
   "create-post",
-  async ({ title }: CreatePostWorkflowInput, { container }) => {
+  async (input: CreatePostWorkflowInput, { container }) => {
     const blogModuleService: BlogModuleService = container.resolve(BLOG_MODULE)
-    const post = await blogModuleService.createPost({ title })
+    const post = await blogModuleService.createPost(input)
     return new StepResponse(post, post)
   },
   async (post, { container }) => {
@@ -47,14 +52,14 @@ export const createPostWorkflow = createWorkflow(
 // UPDATE WORKFLOW
 const updatePostStep = createStep(
   "update-post",
-  async ({ id, ...updateData }: UpdatePostWorkflowInput, { container }) => {
+  async (input : UpdatePostWorkflowInput, { container }) => {
     const blogModuleService: BlogModuleService = container.resolve(BLOG_MODULE)
     
     // Store original data for rollback
-    const originalPost = await blogModuleService.getPost(id)
-    const updatedPost = await blogModuleService.updatePost(id, updateData)
-
-    return new StepResponse(updatedPost, { id, originalData: originalPost })
+    const originalPost = await blogModuleService.getPost(input?.id)
+    const updatedPost = await blogModuleService.updatePost(input?.id ,input)
+    
+    return new StepResponse(updatedPost, { id: input?.id, originalData: originalPost })
   },
   async ({ id, originalData }, { container }) => {
     const blogModuleService: BlogModuleService = container.resolve(BLOG_MODULE)

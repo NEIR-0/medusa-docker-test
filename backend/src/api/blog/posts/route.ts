@@ -4,7 +4,7 @@ import type {
 } from "@medusajs/framework/http"
 import { BLOG_MODULE } from "../../../modules/blog"
 import BlogModuleService from "../../../modules/blog/service"
-import { createPostWorkflow } from "../../../workflows/post-workflows"
+import { createPostWorkflow, CreatePostWorkflowInput } from "../../../workflows/post-workflows"
 
 export async function GET(
   req: MedusaRequest, 
@@ -57,17 +57,21 @@ export async function POST(
       })
     }
 
-    const { title } = req.body
-    if (!title) {
-      return res.status(400).json({
-        message: "Title is required"
-      })
-    }
+    const input = {
+      ...req.body,
+      user_id: userInfo?.id,
+    } as CreatePostWorkflowInput
+
+    // validate input
+    // if (!title) {
+    //   return res.status(400).json({
+    //     message: "Title is required"
+    //   })
+    // }
     
-    const { result: post } = await createPostWorkflow(req.scope)
-      .run({
-        input: { title },
-      })
+    const { result: post } = await createPostWorkflow(req.scope).run({
+      input
+    })
 
     res.json({
       post,

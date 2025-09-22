@@ -1,10 +1,10 @@
 import { MedusaService } from "@medusajs/framework/utils"
 import Post from "./models/post"
 
-class BlogModuleService extends MedusaService({
+class BlogModuleService extends MedusaService({ 
   Post,
 }) {
-  async createPost(data: { title: string }) {
+  async createPost(data: { title: string; description: string; subtitle: string; user_id: string }) {
     return await this.createPosts(data) // ✅
   }
 
@@ -16,8 +16,8 @@ class BlogModuleService extends MedusaService({
     return await this.retrievePost(id) // ✅
   }
 
-  async updatePost(id: string, data: { title?: string }) {    
-    return await this.updatePosts({ // hover, karena dari hover kita tau cara masukin datanya
+  async updatePost(id: string, data: { title?: string; description?: string; subtitle?: string }) {
+    return await this.updatePosts({ 
       id, 
       ...data 
     })
