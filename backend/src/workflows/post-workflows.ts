@@ -7,13 +7,15 @@ import {
 } from "@medusajs/framework/workflows-sdk"
 import { BLOG_MODULE } from "../modules/blog"
 import BlogModuleService from "../modules/blog/service"
+import PostUserLink from "../links/post-user"
+import { useQueryGraphStep } from "@medusajs/medusa/core-flows"
 
 // Types
 export type CreatePostWorkflowInput = {
   title: string,
-  description?: string
-  subtitle?: string
-  user_id?: string
+  description: string
+  subtitle: string
+  user_id: string
 }
 
 export type UpdatePostWorkflowInput = {
@@ -27,6 +29,59 @@ type DeletePostWorkflowInput = {
   id: string,
 }
 
+// GET
+const getPostsStep = createStep(
+  "get-posts",
+  async (_, { container }) => {
+    const query = container.resolve("query")
+    
+    // 1. Get posts
+    const { data: posts } = await query.graph({
+      entity: "post",
+      fields: ["*"],
+      pagination: {
+        take: 5,
+        skip: 0,
+      },
+    })
+
+    // 2. Get unique user IDs
+    const userIds = [...new Set(posts.map((post: any) => post.user_id).filter(Boolean))]
+    
+    // 3. Batch query all users in single query
+    let users: any[] = []
+    if (userIds.length > 0) {
+      const { data: usersData } = await query.graph({
+        entity: "user",
+        fields: ["id", "email", "first_name", "last_name", "created_at", "updated_at"],
+        filters: { id: { $in: userIds } }
+      })
+      users = usersData
+    }
+
+    // 4. Create user lookup map for O(1) access
+    const userMap = new Map(users.map(user => [user.id, user]))
+
+    // 5. Combine posts with users
+    const postsWithUsers = posts.map((post: any) => ({
+      ...post,
+      user: post.user_id ? userMap.get(post.user_id) || null : null
+    }))
+
+    return new StepResponse(postsWithUsers)
+  }
+)
+
+export const getPostWorkflow = createWorkflow(
+  "get-posts",
+  () => {
+    const posts = getPostsStep()
+    return new WorkflowResponse({
+      posts: posts,
+    })
+  }
+)
+
 // CREATE WORKFLOW
 const createPostStep = createStep(
   "create-post",
@@ -36,8 +91,10 @@ const createPostStep = createStep(
     return new StepResponse(post, post)
   },
   async (post, { container }) => {
-    const blogModuleService: BlogModuleService = container.resolve(BLOG_MODULE)
-    await blogModuleService.deletePost(post.id)
+    if (post) {
+      const blogModuleService: BlogModuleService = container.resolve(BLOG_MODULE)
+      await blogModuleService.deletePost(post.id)
+    }
   }
 )
 
@@ -61,9 +118,11 @@ const updatePostStep = createStep(
     
     return new StepResponse(updatedPost, { id: input?.id, originalData: originalPost })
   },
-  async ({ id, originalData }, { container }) => {
-    const blogModuleService: BlogModuleService = container.resolve(BLOG_MODULE)
-    await blogModuleService.updatePost(id, { title: originalData.title })
+  async (compensationData, { container }) => {
+    if (compensationData) {
+      const blogModuleService: BlogModuleService = container.resolve(BLOG_MODULE)
+      await blogModuleService.updatePost(compensationData.id, { title: compensationData.originalData.title })
+    }
   }
 )
 
@@ -88,8 +147,15 @@ const deletePostStep = createStep(
     return new StepResponse({ id }, originalPost)
   },
   async (originalPost, { container }) => {
-    const blogModuleService: BlogModuleService = container.resolve(BLOG_MODULE)
-    await blogModuleService.createPost({ title: originalPost.title })
+    if (originalPost) {
+      const blogModuleService: BlogModuleService = container.resolve(BLOG_MODULE)
+      await blogModuleService.createPost({ 
+        title: originalPost.title,
+        description: originalPost.description || '',
+        subtitle: originalPost.subtitle || '',
+        user_id: originalPost.user_id || ''
+      })
+    }
   }
 )
 

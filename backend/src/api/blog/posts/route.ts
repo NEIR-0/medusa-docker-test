@@ -4,19 +4,22 @@ import type {
 } from "@medusajs/framework/http"
 import { BLOG_MODULE } from "../../../modules/blog"
 import BlogModuleService from "../../../modules/blog/service"
-import { createPostWorkflow, CreatePostWorkflowInput } from "../../../workflows/post-workflows"
+import { createPostWorkflow, CreatePostWorkflowInput, getPostWorkflow } from "../../../workflows/post-workflows"
+
+type UserInfo = {
+  id: string
+  type: string
+  authIdentityId: string
+}
 
 export async function GET(
   req: MedusaRequest, 
   res: MedusaResponse
 ) {
-  const blogModuleService: BlogModuleService = req.scope.resolve(BLOG_MODULE)
-  
-  const posts = await blogModuleService.listPosts()
+  const workflowRunner = req.scope.resolve("workflows")
+  const { result } = await workflowRunner.run(getPostWorkflow as any, {})
 
-  res.json({
-    posts,
-  })
+  res.json(result)
 }
 
 export async function POST(
@@ -32,7 +35,7 @@ export async function POST(
     }
 
     const token = authHeader.substring(7)
-    let userInfo = null
+    let userInfo: UserInfo | null = null
     try {
       const base64Payload = token.split('.')[1]
       const payload = JSON.parse(Buffer.from(base64Payload, 'base64').toString())
@@ -46,7 +49,7 @@ export async function POST(
       userInfo = {
         id: payload.actor_id,
         type: payload.actor_type,
-        authIdentityId: payload.auth_identity_id
+        authIdentityId: payload.auth_identity_id,
       }
 
       console.log("=== User authenticated ===")
@@ -57,10 +60,13 @@ export async function POST(
       })
     }
 
-    const input = {
-      ...req.body,
-      user_id: userInfo?.id,
-    } as CreatePostWorkflowInput
+    const body = req.body as any
+    const input: CreatePostWorkflowInput = {
+      title: body.title || '',
+      description: body.description || '',
+      subtitle: body.subtitle || '',
+      user_id: userInfo?.id || '',
+    }
 
     // validate input
     // if (!title) {
